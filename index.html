@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frequency Monitor｜頻率監測</title>
+  
+<style>
+  * { box-sizing: border-box; }
+
+  :root {
+    --bg: #0d1117;
+    --panel: #151b23;
+    --panel2: #10151c;
+    --border: #27313d;
+    --text: #edf2f7;
+    --muted: #8b98a8;
+    --accent: #55b7ff;
+    --green: #52d273;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 80% -10%, rgba(50,130,190,.16), transparent 32%),
+      var(--bg);
+    color: var(--text);
+    font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  }
+
+  .container {
+    width: min(1240px, calc(100% - 36px));
+    margin: 0 auto;
+    padding: 34px 0 54px;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+    border: 1px solid #304052;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: #121a23;
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 17px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 25px;
+    letter-spacing: -.4px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 13px;
+    background: #111720;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .connection-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #687484;
+  }
+
+  .connection-dot.connected {
+    background: var(--green);
+    box-shadow: 0 0 10px rgba(82,210,115,.55);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1.7fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(23,30,40,.98), rgba(18,24,32,.98));
+    box-shadow: 0 12px 35px rgba(0,0,0,.18);
+  }
+
+  .card-inner {
+    padding: 20px;
+  }
+
+  .eyebrow {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+  }
+
+  .sheet-row {
+    display: flex;
+    gap: 9px;
+    margin-top: 12px;
+  }
+
+  input, select, button {
+    height: 42px;
+    border-radius: 9px;
+    font: inherit;
+  }
+
+  input, select {
+    border: 1px solid #303b48;
+    background: #0f151c;
+    color: var(--text);
+    padding: 0 11px;
+    outline: none;
+  }
+
+  input:focus, select:focus {
+    border-color: #438fca;
+    box-shadow: 0 0 0 3px rgba(85,183,255,.1);
+  }
+
+  .url-field {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  #sheetUrl {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .url-tooltip {
+    position: fixed;
+    z-index: 9999;
+    display: none;
+    max-width: min(760px, calc(100vw - 24px));
+    padding: 9px 12px;
+    border: 1px solid #3a4654;
+    border-radius: 8px;
+    background: #0a0f15;
+    color: #edf2f7;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    font-size: 13px;
+    line-height: 1.4;
+    word-break: break-all;
+    pointer-events: none;
+  }
+
+  button {
+    border: 0;
+    padding: 0 17px;
+    background: #2687c8;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  button:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .5; cursor: wait; }
+
+  .status {
+    min-height: 18px;
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .live-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 148px;
+  }
+
+  .live-value {
+    margin-top: 5px;
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+  }
+
+  .current-value {
+    font-size: clamp(42px, 6vw, 62px);
+    line-height: .95;
+    font-weight: 800;
+    letter-spacing: -2px;
+  }
+
+  .current-unit {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .chart-card {
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 18px;
+    margin-bottom: 15px;
+  }
+
+  .chart-title {
+    margin: 4px 0 0;
+    font-size: 18px;
+  }
+
+  .chart-controls {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+
+  .control {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  #startSecond { width: 76px; }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 470px;
+    border: 1px solid #26313d;
+    border-radius: 12px;
+    background: #0c1117;
+    overflow: hidden;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .stat-card {
+    padding: 18px 20px;
+    min-height: 100px;
+  }
+
+  .stat-label {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: .7px;
+    font-weight: 700;
+  }
+
+  .stat-value {
+    margin-top: 7px;
+    font-size: 25px;
+    font-weight: 750;
+  }
+
+  .footer-note {
+    margin-top: 16px;
+    color: #647181;
+    font-size: 11px;
+    text-align: right;
+  }
+
+  @media (max-width: 850px) {
+    .grid { grid-template-columns: 1fr; }
+    .chart-header { align-items: flex-start; flex-direction: column; }
+    .chart-wrap { height: 380px; }
+  }
+
+  @media (max-width: 600px) {
+    .container { width: min(100% - 22px, 1240px); padding-top: 22px; }
+    .topbar { align-items: flex-start; }
+    .status-pill { margin-top: 2px; }
+    .sheet-row { flex-direction: column; }
+    .sheet-row button { width: 100%; }
+    .stats { grid-template-columns: 1fr; }
+    .chart-controls { width: 100%; }
+  }
+</style>
+
+</head>
+<body>
+
+<div class="container">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">F</div>
+      <div>
+        <h1>Frequency Monitor</h1>
+      </div>
+    </div>
+
+    <div class="status-pill">
+      <span id="connectionDot" class="connection-dot"></span>
+      <span id="connectionText">未連線</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <div class="card-inner">
+        <div class="eyebrow">DATA SOURCE</div>
+        <div class="sheet-row">
+          <div class="url-field">
+            <input id="sheetUrl" type="text"
+                   placeholder="貼上 Google Sheets 網址"
+                   title="">
+            <div id="urlTooltip" class="url-tooltip"></div>
+          </div>
+          <button id="loadBtn">讀取資料</button>
+        </div>
+        <div id="status" class="status">尚未載入資料</div>
+      </div>
+    </section>
+
+    <section class="card live-card">
+      <div class="card-inner">
+        <div class="eyebrow">CURRENT FREQUENCY</div>
+        <div class="live-value">
+          <span id="currentFrequency" class="current-value">--</span>
+          <span class="current-unit">Hz</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="eyebrow">HISTORY</div>
+        <h2 class="chart-title">Frequency History</h2>
+      </div>
+
+      <div class="chart-controls">
+        <div class="control">
+          <span>顯示</span>
+          <select id="timeRange">
+            <option value="1">1 秒</option>
+            <option value="5">5 秒</option>
+            <option value="10" selected>10 秒</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <span>起始</span>
+          <input id="startSecond" type="number" min="0" step="1" value="0">
+          <span>秒</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+  </section>
+
+  <div class="stats">
+    <section class="card stat-card">
+      <div class="stat-label">MINIMUM</div>
+      <div id="minFrequency" class="stat-value">-- Hz</div>
+    </section>
+
+    <section class="card stat-card">
+      <div class="stat-label">MAXIMUM</div>
+      <div id="maxFrequency" class="stat-value">-- Hz</div>
+    </section>
+
+    <section class="card stat-card">
+      <div class="stat-label">AVERAGE</div>
+      <div id="avgFrequency" class="stat-value">-- Hz</div>
+    </section>
+  </div>
+
+  <div class="footer-note">Frequency experiment dashboard</div>
+</div>
+
+<script>
+  // 使用者可自行更換 Google 試算表，不需要修改程式碼
+  const DEFAULT_SHEET_URL =
+    "https://docs.google.com/spreadsheets/d/1pzQURe2Dy8g2n3rPidcdLrLUVIYWZngMhg6EkJ1Y6Y8/edit?gid=1878075540#gid=1878075540";
+
+  const canvas = document.getElementById("chart");
+  const ctx = canvas.getContext("2d");
+  const currentFrequency = document.getElementById("currentFrequency");
+  const timeRange = document.getElementById("timeRange");
+  const startSecond = document.getElementById("startSecond");
+  const status = document.getElementById("status");
+  const refreshBtn = document.getElementById("loadBtn");
+  const sheetUrlInput = document.getElementById("sheetUrl");
+  const urlTooltip = document.getElementById("urlTooltip");
+
+  function updateUrlTooltip() {
+    const value = sheetUrlInput.value.trim();
+    urlTooltip.textContent = value;
+    sheetUrlInput.title = value;
+  }
+
+  sheetUrlInput.addEventListener("input", updateUrlTooltip);
+  sheetUrlInput.addEventListener("mouseenter", () => {
+    updateUrlTooltip();
+    if (!sheetUrlInput.value.trim()) return;
+    const rect = sheetUrlInput.getBoundingClientRect();
+    urlTooltip.style.left = `${rect.left}px`;
+    urlTooltip.style.top = `${rect.bottom + 8}px`;
+    urlTooltip.style.display = "block";
+  });
+  sheetUrlInput.addEventListener("mouseleave", () => {
+    urlTooltip.style.display = "none";
+  });
+  sheetUrlInput.addEventListener("blur", () => {
+    urlTooltip.style.display = "none";
+  });
+  const connectionDot = document.getElementById("connectionDot");
+  const connectionText = document.getElementById("connectionText");
+
+  const minValue = document.getElementById("minFrequency");
+  const maxValue = document.getElementById("maxFrequency");
+  const avgValue = document.getElementById("avgFrequency");
+
+
+  // 網站收到的完整資料
+  let data = [];
+
+  /*
+    Google Sheets → 網站
+    使用 Google Visualization 的 JSON 輸出。
+    試算表需要允許「知道連結的任何人」查看。
+  */
+  function parseGoogleSheetUrl(sheetUrl) {
+    try {
+      const url = new URL(sheetUrl.trim());
+      const match = url.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) return null;
+
+      const sheetId = match[1];
+      const gid =
+        url.searchParams.get("gid") ||
+        url.hash.match(/gid=([0-9]+)/)?.[1] ||
+        "";
+
+      return { sheetId, gid };
+    } catch {
+      return null;
+    }
+  }
+
+  // 最精簡的 Google Sheets 讀取方式：
+  // 直接請 Google Sheets 回傳 JSONP，避免載入整套圖表函式庫。
+  function readGoogleSheet(sheetId, gid) {
+    return new Promise((resolve, reject) => {
+      const oldGoogle = window.google;
+      let finished = false;
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        if (oldGoogle === undefined) {
+          delete window.google;
+        } else {
+          window.google = oldGoogle;
+        }
+        script.remove();
+      };
+
+      const fail = (message) => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        reject(new Error(message));
+      };
+
+      const timer = setTimeout(
+        () => fail("Google Sheets 讀取逾時"),
+        10000
+      );
+
+      // Google GViz's default JSON response is wrapped in:
+      // google.visualization.Query.setResponse({...})
+      window.google = {
+        visualization: {
+          Query: {
+            setResponse: (json) => {
+              if (finished) return;
+              finished = true;
+              cleanup();
+
+              if (!json || json.status !== "ok") {
+                const detail =
+                  json?.errors?.find(Boolean)?.detailed_message ||
+                  json?.errors?.find(Boolean)?.message ||
+                  "Google Sheets 查詢失敗";
+                reject(new Error(detail));
+                return;
+              }
+
+              resolve(json);
+            }
+          }
+        }
+      };
+
+      const script = document.createElement("script");
+      script.onerror = () => fail("Google Sheets 無法連線");
+
+      const params = new URLSearchParams({
+        gid: String(gid || "0"),
+        tqx: "out:json",
+        tq: "select A, B"
+      });
+
+      script.src =
+        `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?${params}`;
+
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadSheetList() {
+    const sheetUrl = sheetUrlInput.value.trim();
+    const sheet = parseGoogleSheetUrl(sheetUrl);
+
+    if (!sheet) {
+      status.textContent = "Google 試算表網址格式不正確";
+      return;
+    }
+
+    localStorage.setItem("frequencyMonitorSheetUrl", sheetUrl);
+    status.textContent = "讀取中...";
+    connectionDot.classList.remove("connected");
+    connectionText.textContent = "讀取中";
+    refreshBtn.disabled = true;
+
+    try {
+      await loadGoogleSheetByGid(sheet.sheetId, sheet.gid || "0");
+    } catch (error) {
+      console.error(error);
+      connectionDot.classList.remove("connected");
+      connectionText.textContent = "讀取失敗";
+      status.textContent = "讀取失敗：" + (error.message || error);
+    } finally {
+      refreshBtn.disabled = false;
+    }
+  }
+
+  async function loadGoogleSheetByGid(sheetId, gid) {
+    const json = await readGoogleSheet(sheetId, gid);
+    const rows = json.table?.rows || [];
+    const imported = [];
+
+    for (const row of rows) {
+      const cells = row.c || [];
+      const time = Number(cells[0]?.v);
+      const frequency = Number(cells[1]?.v);
+
+      if (Number.isFinite(time) && Number.isFinite(frequency) && frequency >= 0) {
+        imported.push({ time, frequency });
+      }
+    }
+
+    if (!imported.length) {
+      throw new Error("找不到有效資料：請確認 A 欄是時間、B 欄是頻率");
+    }
+
+    data = imported.sort((a, b) => a.time - b.time);
+
+    const last = data[data.length - 1];
+    currentFrequency.textContent = last.frequency.toFixed(2);
+
+    updateStats();
+    clampStartSecond();
+    drawChart();
+
+    connectionDot.classList.add("connected");
+    connectionText.textContent = "已連線";
+    status.textContent =
+      `已讀取 ${data.length.toLocaleString()} 筆資料（最新 ${last.time.toFixed(2)} 秒）`;
+  }
+
+  function updateStats() {
+    if (!data.length) {
+      minValue.textContent = "--.-- Hz";
+      maxValue.textContent = "--.-- Hz";
+      avgValue.textContent = "--.-- Hz";
+      return;
+    }
+
+    const values = data.map(d => d.frequency);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+    minValue.textContent = min.toFixed(2) + " Hz";
+    maxValue.textContent = max.toFixed(2) + " Hz";
+    avgValue.textContent = avg.toFixed(2) + " Hz";
+  }
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawChart();
+  }
+
+  function clampStartSecond() {
+    const duration = Number(timeRange.value) || 1;
+    const latest = data.length ? data[data.length - 1].time : 0;
+    const maxStart = Math.max(0, Math.floor(latest - duration));
+    let start = Math.max(0, Number(startSecond.value) || 0);
+    start = Math.min(start, maxStart);
+    startSecond.value = String(start);
+  }
+
+  function drawChart() {
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const left = 58;
+    const right = 20;
+    const top = 25;
+    const bottom = 45;
+    const plotW = width - left - right;
+    const plotH = height - top - bottom;
+    const rangeSeconds = Number(timeRange.value);
+
+    if (!data.length) {
+      ctx.fillStyle = "#8b98a8";
+      ctx.font = "16px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("等待 Google Sheets 資料...", width / 2, height / 2);
+      return;
+    }
+
+    const newestTime = data[data.length - 1].time;
+    const requestedStart = Math.max(0, Number(startSecond.value) || 0);
+    const maxStart = Math.max(0, newestTime - rangeSeconds);
+    const windowStart = Math.min(requestedStart, maxStart);
+    const windowEnd = Math.min(windowStart + rangeSeconds, newestTime);
+    const visible = data.filter(p => p.time >= windowStart && p.time <= windowEnd);
+
+    if (!visible.length) return;
+
+    let min = Math.min(...visible.map(d => d.frequency));
+    let max = Math.max(...visible.map(d => d.frequency));
+
+    if (min === max) {
+      min -= 1;
+      max += 1;
+    }
+
+    const padding = (max - min) * 0.1;
+    min -= padding;
+    max += padding;
+
+    // 網格
+    ctx.strokeStyle = "#344150";
+    ctx.lineWidth = 1;
+    ctx.font = "12px Arial";
+    ctx.fillStyle = "#8b98a8";
+    ctx.textAlign = "right";
+
+    const gridLines = 5;
+    for (let i = 0; i <= gridLines; i++) {
+      const y = top + plotH * (i / gridLines);
+      const value = max - (max - min) * (i / gridLines);
+
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(left + plotW, y);
+      ctx.stroke();
+
+      ctx.fillText(value.toFixed(1), left - 8, y + 4);
+    }
+
+    // X 軸
+    ctx.textAlign = "center";
+    const xTicks = 5;
+    for (let i = 0; i <= xTicks; i++) {
+      const x = left + plotW * (i / xTicks);
+      const seconds = windowStart + (windowEnd - windowStart) * (i / xTicks);
+
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, top + plotH);
+      ctx.stroke();
+
+      ctx.fillText(seconds.toFixed(0) + " s", x, height - 15);
+    }
+
+    // 曲線
+    ctx.beginPath();
+
+    visible.forEach((point, index) => {
+      const x = left + ((point.time - windowStart) / Math.max(0.000001, (windowEnd - windowStart))) * plotW;
+      const y = top + (1 - (point.frequency - min) / (max - min)) * plotH;
+
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+
+    ctx.strokeStyle = "#55b7ff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  refreshBtn.addEventListener("click", loadSheetList);
+
+  sheetUrlInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") loadSheetList();
+  });
+
+  timeRange.addEventListener("change", () => {
+    clampStartSecond();
+    drawChart();
+  });
+
+  startSecond.addEventListener("input", () => {
+    clampStartSecond();
+    drawChart();
+  });
+
+  window.addEventListener("resize", resizeCanvas);
+
+  resizeCanvas();
+
+  // 記住上一次使用的試算表；第一次開啟則使用目前這份範例表
+  sheetUrlInput.value =
+    localStorage.getItem("frequencyMonitorSheetUrl") || DEFAULT_SHEET_URL;
+  updateUrlTooltip();
+
+  // 頁面開啟時直接讀取 Google Sheets
+  loadSheetList();
+</script>
+</body>
+</html>

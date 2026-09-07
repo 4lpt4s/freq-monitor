@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frequency Monitor V2.0</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#050b13;color:#eaf2ff;font:14px Arial,sans-serif}
+.app{max-width:1500px;margin:auto;padding:22px}
+header{height:58px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1c2a3b;margin-bottom:20px}
+.brand{font-size:23px;font-weight:800}.logo{display:inline-grid;place-items:center;width:38px;height:38px;border:1px solid #168cff;border-radius:8px;color:#43b1ff;margin-right:10px}
+.version{color:#329cff;font-size:14px}.live,.good{color:#20df89;font-weight:700}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:16px}.sidebar,main{display:flex;flex-direction:column;gap:16px}
+.panel,.card{background:linear-gradient(145deg,#0b1420,#08111b);border:1px solid #1b2a3b;border-radius:13px;box-shadow:0 8px 30px #0005}
+.panel{padding:20px}.label{color:#8fa2ba;text-transform:uppercase;letter-spacing:1.2px;font-size:12px;margin-bottom:14px}
+.source{font-size:18px;font-weight:bold}.row,.status{display:flex;justify-content:space-between;align-items:center;margin:15px 0}
+.row span,.status span,small{color:#8fa2ba}button,select,input{background:#0b1725;color:#dceaff;border:1px solid #28415e;border-radius:7px;padding:10px}
+button{cursor:pointer}.panel input{width:100%;margin-top:10px}
+button{cursor:pointer}.full{width:100%;color:#49b5ff;margin-top:10px}
+.top{padding:22px;display:grid;grid-template-columns:1fr 260px;gap:20px}.freq{font-size:68px;font-weight:800;color:#48aaff;margin:12px 0}.unit{font-size:20px;color:#91a3ba}
+.gauge{text-align:center;padding:15px}.arc{margin:auto;width:190px;height:95px;border:12px solid #223248;border-bottom:0;border-radius:190px 190px 0 0;position:relative}
+.arcfill{position:absolute;left:-12px;top:-12px;width:190px;height:95px;border:12px solid #48aaff;border-bottom:0;border-right-color:transparent;border-radius:190px 190px 0 0;transform-origin:50% 100%;transform:rotate(-35deg)}
+.gauge strong{display:block;font-size:26px;margin-top:-5px}.chart{padding:20px}.chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.plot-wrap{position:relative}
+.hover-tip{position:absolute;display:none;min-width:170px;padding:10px 12px;background:#091522;border:1px solid #31516f;border-radius:8px;box-shadow:0 8px 25px #0008;color:#eaf2ff;font-size:12px;line-height:1.55;pointer-events:none;z-index:5}
+.hover-tip .time{color:#b9cbe0;margin-bottom:4px}.hover-tip .value{font-weight:700}
+.hover-line{stroke:#7e9bb8;stroke-width:1;stroke-dasharray:4 4;opacity:.85}.hover-dot{stroke:#07111c;stroke-width:2}
+.chart-title{font-weight:bold}.tabs button{padding:7px 12px;margin-left:4px;font-size:12px}.tabs .active{border-color:#168cff;color:#45adff}
+svg{width:100%;height:330px;background:#07111c;border-radius:8px}.gridline{stroke:#203043}.wave{fill:none;stroke:#39a8ff;stroke-width:3}
+.threshold{stroke:#ff5252;stroke-dasharray:7 6}.baseline{stroke:#f2c94c;stroke-dasharray:7 6}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.stat{padding:17px}.stat strong{display:block;font-size:24px;margin:9px 0}.stat span{color:#91a3ba;font-size:12px}
+.table{max-height:240px;overflow:auto;margin-top:14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid #1b2a3b;text-align:left}th{color:#8fa2ba}
+.badge{padding:5px 9px;border-radius:12px;font-size:11px}.normal{color:#20df89;background:#103425}.warning{color:#f2c94c;background:#3a3010}.alert{color:#ff6666;background:#3a171c}
+footer{text-align:center;color:#65788f;margin:18px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.top{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+</style></head>
+<body><div class="app">
+<header><div class="brand"><span class="logo">〽</span>FREQUENCY MONITOR <span class="version">V2.0</span></div><div class="live">● HISTORICAL ANALYSIS</div></header>
+<div class="layout">
+<aside class="sidebar">
+<section class="panel"><div class="label">Data Source</div>
+<div class="source">▣ Google Sheets</div>
+<div class="connected" id="sheetConnection">● Not Connected</div>
+<input id="sheetUrl" type="text" placeholder="Paste Google Sheets URL" autocomplete="off">
+<button class="full" id="loadBtn">↻ Scan Google Sheet</button>
+<div class="row"><span>Status</span><b id="sheetStatus">Not loaded</b></div>
+<div class="row"><span>Devices</span><b id="deviceCount">--</b></div>
+<div class="row"><span>History Points</span><b id="pointCount">--</b></div>
+</section>
+<section class="panel"><div class="label">Settings</div>
+<div class="row"><span>Device</span><select id="device"></select></div><div class="row"><span>Gear</span><select id="gear"></select></div>
+<div class="row"><span>Data Range</span><select id="range"><option value="all">All</option><option value="20">20 Points</option><option value="10">10 Points</option></select></div>
+<button class="full" onclick="render()">⚙ Apply Settings</button></section>
+<section class="panel"><div class="label">Status</div>
+<div class="status"><span>Data Source</span><b class="good">● Google Sheets</b></div>
+<div class="status"><span>Data Quality</span><b class="good">● Good</b></div>
+<div class="status"><span>Selected Gear</span><b id="statusGear">--</b></div>
+<div class="status"><span>Latest Deviation</span><b id="statusDev">--</b></div></section>
+</aside>
+<main>
+
+<section class="card chart"><div class="chart-head"><div class="chart-title">〽 FREQUENCY WAVEFORM</div>
+<div class="tabs"><button class="active" onclick="setRange('all',this)">All</button><button onclick="setRange('20',this)">20</button><button onclick="setRange('10',this)">10</button></div></div>
+<div class="plot-wrap" id="freqPlot"><svg id="svg" viewBox="0 0 1000 330" preserveAspectRatio="none"></svg><div class="hover-tip" id="freqTip"></div></div></section>
+<section class="card chart"><div class="chart-head"><div class="chart-title">〽 SOUND LEVEL WAVEFORM</div>
+<div class="tabs"><button class="active" onclick="setDbRange('all',this)">All</button><button onclick="setDbRange('20',this)">20</button><button onclick="setDbRange('10',this)">10</button></div></div>
+<div class="plot-wrap" id="dbPlot"><svg id="dbsvg" viewBox="0 0 1000 330" preserveAspectRatio="none"></svg><div class="hover-tip" id="dbTip"></div></div></section>
+<section class="stats">
+<div class="card stat"><small>MINIMUM</small><strong id="min">--</strong><span id="minTime">--</span></div>
+<div class="card stat"><small>MAXIMUM</small><strong id="max">--</strong><span id="maxTime">--</span></div>
+<div class="card stat"><small>AVERAGE</small><strong id="avg">--</strong><span id="avgDesc">Selected Points</span></div>
+<div class="card stat"><small>RMS</small><strong id="rms">--</strong><span>Selected Points</span></div>
+<div class="card stat"><small>STD DEV</small><strong id="std">--</strong><span>Selected Points</span></div>
+</section>
+<section class="card panel"><div class="label">Recent History</div><div class="table"><table><thead><tr><th>Timestamp</th><th>Device</th><th>Gear</th><th>Hz</th><th>dB</th></tr></thead><tbody id="history"></tbody></table></div></section>
+</main></div><footer>Frequency Monitor V2.0 | Built for Real-time Monitoring & Analysis</footer></div>
+
+<script>
+const DATA={"baseline": [{"Device_ID": "F001", "Device_Name": "Fan_01", "Gear_1_Hz": 60, "Gear_2_Hz": 80, "Gear_3_Hz": 100}], "history": [{"Timestamp": "2026-08-25 10:00:00", "Device_ID": "F001", "Gear": 1, "Hz": 60.2, "dB": 48.0}, {"Timestamp": "2026-08-25 10:05:00", "Device_ID": "F001", "Gear": 1, "Hz": 59.8, "dB": 49.0}, {"Timestamp": "2026-08-25 10:10:00", "Device_ID": "F001", "Gear": 1, "Hz": 60.1, "dB": 48.0}, {"Timestamp": "2026-08-25 19:39:22", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-08-25 19:57:50", "Device_ID": "F001", "Gear": 3, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-08-25 19:58:34", "Device_ID": "F001", "Gear": 3, "Hz": 60.5, "dB": 51.0}, {"Timestamp": "2026-08-27 21:52:03", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-08-27 21:55:57", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": NaN}, {"Timestamp": "2026-08-27 22:07:51", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-08-27 22:18:36", "Device_ID": "F001", "Gear": 1, "Hz": 62.1, "dB": 65.0}, {"Timestamp": "2026-08-27 22:18:41", "Device_ID": "F001", "Gear": 1, "Hz": 62.1, "dB": 67.0}, {"Timestamp": "2026-08-27 22:18:43", "Device_ID": "F001", "Gear": 1, "Hz": 61.6, "dB": 67.0}, {"Timestamp": "2026-08-27 22:19:02", "Device_ID": "F001", "Gear": 2, "Hz": 61.6, "dB": 67.0}, {"Timestamp": "2026-08-27 22:33:15", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-08-27 22:33:25", "Device_ID": "F001", "Gear": 3, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-08-27 22:33:33", "Device_ID": "F001", "Gear": 1, "Hz": 60.9, "dB": 51.0}, {"Timestamp": "2026-08-28 16:17:00", "Device_ID": "F001", "Gear": 3, "Hz": 60.8, "dB": 43.0}, {"Timestamp": "2026-08-28 16:18:03", "Device_ID": "F001", "Gear": 2, "Hz": 60.9, "dB": 46.0}, {"Timestamp": "2026-08-28 16:18:05", "Device_ID": "F001", "Gear": 2, "Hz": 60.6, "dB": 46.0}, {"Timestamp": "2026-08-28 16:18:06", "Device_ID": "F001", "Gear": 2, "Hz": 60.6, "dB": 46.0}, {"Timestamp": "2026-08-28 16:18:10", "Device_ID": "F001", "Gear": 0, "Hz": 60.6, "dB": 46.0}, {"Timestamp": "2026-08-28 16:18:13", "Device_ID": "F001", "Gear": 1, "Hz": 60.6, "dB": 46.0}, {"Timestamp": "2026-08-28 16:23:55", "Device_ID": "F001", "Gear": 3, "Hz": 61.1, "dB": 47.0}, {"Timestamp": "2026-08-28 16:23:59", "Device_ID": "F001", "Gear": -1, "Hz": 60.9, "dB": 50.0}, {"Timestamp": "2026-08-28 16:24:03", "Device_ID": "F001", "Gear": 2, "Hz": 61.2, "dB": 53.0}, {"Timestamp": "2026-08-28 16:24:06", "Device_ID": "F001", "Gear": 2, "Hz": 61.6, "dB": 56.0}, {"Timestamp": "2026-08-28 16:24:10", "Device_ID": "F001", "Gear": 2, "Hz": 61.6, "dB": 56.0}, {"Timestamp": "2026-08-28 16:24:15", "Device_ID": "F001", "Gear": 3, "Hz": 61.6, "dB": 56.0}, {"Timestamp": "2026-08-31 21:00:47", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-08-31 21:01:07", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": 47.0}, {"Timestamp": "2026-09-04 13:03:18", "Device_ID": "F001", "Gear": 1, "Hz": 60.5, "dB": 47.0}]};
+const $=id=>document.getElementById(id);
+let selectedRange="all"; let selectedDbRange="all";
+let runtimeHistory=[];
+let runtimeBaseline=[];
+let sheetId="";
+let historyGid="0";
+let refreshing=false;
+let refreshTimer=null;
+const DEFAULT_SHEET_URL="https://docs.google.com/spreadsheets/d/18U6w-UbU_TGkJGnfUtsVBgJtlYhpCmeXUfQA-Eim2_8/edit?gid=773001883#gid=773001883";
+$("sheetUrl").value=localStorage.getItem("frequencyMonitorSheetUrlV2")||DEFAULT_SHEET_URL;
+$("pointCount").textContent=DATA.history.length;
+populateDevices();
+function populateDevices(){
+  const base=runtimeBaseline.length?runtimeBaseline:DATA.baseline;
+  const ids=[...new Set(base.map(x=>x.Device_ID).filter(Boolean))];
+  $("device").innerHTML=ids.map(id=>{const x=base.find(r=>r.Device_ID===id);return `<option value="${id}">${id} · ${x?.Device_Name||id}</option>`}).join("");
+  $("deviceCount").textContent=ids.length;
+}
+function gears(){let base=runtimeBaseline.length?runtimeBaseline:DATA.baseline;let x=base.find(r=>r.Device_ID===$("device").value);if(!x){$("gear").innerHTML="";return}$("gear").innerHTML=["1","2","3"].filter(g=>x["Gear_"+g+"_Hz"]!==""&&x["Gear_"+g+"_Hz"]!=null).map(g=>`<option value="${g}">Gear ${g}</option>`).join("")}
+$("device").onchange=()=>{gears();render()};$("gear").onchange=render;
+function setRange(v,b){selectedRange=v;$("range").value=v;document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
+$("range").onchange=e=>{selectedRange=e.target.value;render()};
+function parseGoogleSheetUrl(urlText){
+  try{
+    const u=new URL(urlText.trim());
+    const m=u.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if(!m)return null;
+    return {id:m[1],gid:u.searchParams.get("gid")||u.hash.match(/gid=([0-9]+)/)?.[1]||"0"};
+  }catch{return null}
+}
+function gvizRequest(id, query, extra={}){
+  return new Promise((resolve,reject)=>{
+    const cb="gviz_cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const script=document.createElement("script");
+    let done=false;
+    const finish=(fn,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch{}script.remove();fn(val)};
+    const timer=setTimeout(()=>finish(reject,new Error("Google Sheets 讀取逾時")),10000);
+    window[cb]=json=>{
+      if(!json || json.status!=="ok"){
+        const e=json?.errors?.find(Boolean);
+        finish(reject,new Error(e?.detailed_message||e?.message||"Google Sheets 查詢失敗"));
+      }else finish(resolve,json);
+    };
+    script.onerror=()=>finish(reject,new Error("Google Sheets 無法連線"));
+    const params=new URLSearchParams({gid:extra.gid||"0",tqx:`responseHandler:${cb}`,tq:query});
+    if(extra.sheet)params.set("sheet",extra.sheet);
+    script.src=`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?${params}`;
+    document.head.appendChild(script);
+  });
+}
+function cellValue(c){return c?.v??c?.f??""}
+function parseGvizDate(v){
+  if(v instanceof Date)return v;
+  if(typeof v==="number") return new Date((v-25569)*86400000);
+  if(typeof v!=="string")return new Date(v);
+  const m=v.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
+  if(m)return new Date(Number(m[1]),Number(m[2]),Number(m[3]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
+  return new Date(v);
+}
+function parseHistory(json){
+  const rows=json.table?.rows||[];
+  return rows.map(r=>{
+    const c=r.c||[];
+    return {Timestamp:String(cellValue(c[0])),Device_ID:String(cellValue(c[1])),Gear:String(cellValue(c[2])),Hz:Number(cellValue(c[3])),dB:Number(cellValue(c[4]))};
+  }).filter(r=>Number.isFinite(r.Hz));
+}
+function parseBaseline(json){
+  const rows=json.table?.rows||[];
+  return rows.map(r=>{
+    const c=r.c||[];
+    return {Device_ID:String(cellValue(c[0])),Device_Name:String(cellValue(c[1])),Gear_1_Hz:cellValue(c[2]),Gear_2_Hz:cellValue(c[3]),Gear_3_Hz:cellValue(c[4])};
+  }).filter(r=>r.Device_ID);
+}
+async function scanGoogleSheet(isRefresh=false){
+  if(refreshing)return;
+  const parsed=parseGoogleSheetUrl($("sheetUrl").value);
+  if(!parsed){$("sheetStatus").textContent="Invalid URL";return}
+  sheetId=parsed.id;historyGid=parsed.gid;
+  refreshing=true;$("loadBtn").disabled=true;$("sheetStatus").textContent=isRefresh?"Refreshing...":"Loading...";
+  $("sheetConnection").className="connected";$("sheetConnection").textContent="● Connecting";
+  try{
+    const historyJson=await gvizRequest(sheetId,"select A,B,C,D,E",{gid:historyGid});
+    const h=parseHistory(historyJson);
+    if(!h.length)throw new Error("找不到有效 History 資料：請確認 A:E 為 Timestamp / Device_ID / Gear / Hz / dB");
+    let b=runtimeBaseline;
+    if(!b.length){
+      const baseJson=await gvizRequest(sheetId,"select A,B,C,D,E",{sheet:"Device_Baseline"});
+      b=parseBaseline(baseJson);
+      if(!b.length)throw new Error("找不到 Device_Baseline 資料：請確認工作表名稱與 A:E 欄位");
+    }
+    runtimeHistory=h;runtimeBaseline=b;
+    populateDevices();
+    gears();
+    render();
+    $("sheetConnection").className="connected good";
+    $("sheetConnection").textContent="● Connected";
+    $("sheetStatus").textContent=`Loaded ${h.length.toLocaleString()} points`;
+    $("pointCount").textContent=h.length.toLocaleString();
+    startAutoRefresh();
+  }catch(e){
+    $("sheetConnection").className="connected";$("sheetConnection").textContent="● Read Failed";
+    $("sheetStatus").textContent=e.message||String(e);
+    if(!isRefresh) console.error(e);
+  }finally{
+    refreshing=false;$("loadBtn").disabled=false;
+  }
+}
+function startAutoRefresh(){
+  clearInterval(refreshTimer);
+  if(!sheetId)return;
+  refreshTimer=setInterval(()=>scanGoogleSheet(true),1000);
+}
+
+function setDbRange(v,b){selectedDbRange=v;document.querySelectorAll(".chart:nth-of-type(2) .tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderDb()}
+function attachHover(svgId, plotId, tipId, rows, valueKey, baseValue, unit){
+  const svg=$(svgId), plot=$(plotId), tip=$(tipId);
+  if(!svg || !rows.length) return;
+  const vals=rows.map(r=>Number(r[valueKey]));
+  const valid=vals.map((v,i)=>({v,i})).filter(x=>Number.isFinite(x.v));
+  if(!valid.length) return;
+  svg.onmousemove=(e)=>{
+    const rect=svg.getBoundingClientRect();
+    const ratio=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+    const idx=Math.round(ratio*(rows.length-1));
+    let nearest=idx;
+    if(!Number.isFinite(vals[nearest])) {
+      let best=Infinity;
+      for(const x of valid){const d=Math.abs(x.i-idx);if(d<best){best=d;nearest=x.i}}
+    }
+    const row=rows[nearest], value=Number(row[valueKey]);
+    const x=ratio*1000;
+    let svgY=165;
+    const points=svg.querySelectorAll('.wave');
+    if(points.length && Number.isFinite(value)){
+      const pts=points[0].getAttribute('points').trim().split(' ');
+      if(pts[nearest]){
+        const py=Number(pts[nearest].split(',')[1]); if(Number.isFinite(py)) svgY=py;
+      }
+    }
+    const old=svg.querySelector('.hover-layer'); if(old) old.remove();
+    let layer=document.createElementNS('http://www.w3.org/2000/svg','g');
+    layer.setAttribute('class','hover-layer');
+    layer.innerHTML=`<line class="hover-line" x1="${x}" y1="0" x2="${x}" y2="330"></line><circle class="hover-dot" cx="${x}" cy="${svgY}" r="5" fill="${valueKey==='Hz'?'#48aaff':'#b35cff'}"></circle>`;
+    svg.appendChild(layer);
+
+    const px=ratio*plot.clientWidth;
+    const py=Math.max(8, Math.min(plot.clientHeight-92, (svgY/330)*plot.clientHeight-20));
+    tip.style.display='block';
+    tip.style.left=Math.min(Math.max(8,px+12),plot.clientWidth-188)+'px';
+    tip.style.top=py+'px';
+    const baseLine=(baseValue!==null && baseValue!==undefined) ? `<div>Baseline: <b>${Number(baseValue).toFixed(2)} ${unit}</b></div>` : '';
+    tip.innerHTML=`<div class="time">${row.Timestamp}</div><div class="value">${valueKey==='Hz'?'Frequency':'Sound Level'}: ${value.toFixed(2)} ${unit}</div>${baseLine}`;
+  };
+  svg.onmouseleave=()=>{
+    const old=svg.querySelector('.hover-layer'); if(old) old.remove();
+    tip.style.display='none';
+  };
+}
+function renderDb(){
+let id=$("device").value,g=$("gear").value;
+let rows=(runtimeHistory.length?runtimeHistory:DATA.history).filter(r=>String(r.Device_ID)===id&&String(r.Gear)===g).sort((a,b)=>new Date(a.Timestamp)-new Date(b.Timestamp));
+if(selectedDbRange!=="all")rows=rows.slice(-Number(selectedDbRange));
+rows=rows.filter(r=>Number.isFinite(Number(r.dB)));
+if(!rows.length)return;
+let vals=rows.map(r=>Number(r.dB)),mn=Math.min(...vals),mx=Math.max(...vals),span=Math.max(4,(mx-mn)*1.8),lo=mn-span*.25,hi=mx+span*.25,W=1000,H=330,T=15,B=18;
+let X=i=>980*(i/Math.max(1,vals.length-1)),Y=z=>T+(H-T-B)*(1-(z-lo)/(hi-lo)),s="";
+for(let i=0;i<6;i++){let y=T+(H-T-B)*i/5;s+=`<line class="gridline" x1="0" y1="${y}" x2="1000" y2="${y}"/>`;s+=`<text x="8" y="${y-4}" fill="#71839e" font-size="11">${(hi-(hi-lo)*i/5).toFixed(1)}</text>`}
+s+=`<polyline class="wave" style="stroke:#b35cff" points="${vals.map((z,i)=>X(i)+","+Y(z)).join(" ")}"/>`;
+s+=`<circle cx="${X(vals.length-1)}" cy="${Y(vals.at(-1))}" r="5" fill="#b35cff"/>`;
+s+=`<text x="990" y="${Y(vals.at(-1))-10}" text-anchor="end" fill="#eaf2ff" font-size="11">${vals.at(-1).toFixed(1)} dB</text>`;
+$("dbsvg").innerHTML=s;
+attachHover("dbsvg","dbPlot","dbTip",rows,"dB",null,"dB");
+}
+
+function render(){
+let id=$("device").value,g=$("gear").value,base=Number((runtimeBaseline.length?runtimeBaseline:DATA.baseline).find(x=>x.Device_ID===id)["Gear_"+g+"_Hz"]);
+let rows=(runtimeHistory.length?runtimeHistory:DATA.history).filter(r=>String(r.Device_ID)===id&&String(r.Gear)===g).sort((a,b)=>new Date(a.Timestamp)-new Date(b.Timestamp));
+if(selectedRange!=="all")rows=rows.slice(-Number(selectedRange));
+if(!rows.length)return;
+let v=rows.map(r=>Number(r.Hz)),cur=v.at(-1),mn=Math.min(...v),mx=Math.max(...v),av=v.reduce((a,b)=>a+b,0)/v.length,rms=Math.sqrt(v.reduce((a,b)=>a+b*b,0)/v.length),sd=Math.sqrt(v.reduce((a,b)=>a+(b-av)**2,0)/v.length),dev=cur-base;
+$("statusGear").textContent="Gear "+g;$("statusDev").textContent=(dev>=0?"+":"")+dev.toFixed(2)+" Hz";
+$("min").textContent=mn.toFixed(2)+" Hz";$("max").textContent=mx.toFixed(2)+" Hz";$("avg").textContent=av.toFixed(2)+" Hz";$("rms").textContent=rms.toFixed(2)+" Hz";$("std").textContent=sd.toFixed(2)+" Hz";
+$("minTime").textContent=rows[v.indexOf(mn)].Timestamp;$("maxTime").textContent=rows[v.indexOf(mx)].Timestamp;
+let span=Math.max(4,(mx-mn)*1.8),lo=Math.min(mn,base)-span*.25,hi=Math.max(mx,base)+span*.25,W=1000,H=330,L=0,T=15,B=18;
+let X=i=>L+(W-10)*(i/Math.max(1,v.length-1)),Y=z=>T+(H-T-B)*(1-(z-lo)/(hi-lo)),s="";
+for(let i=0;i<6;i++){let y=T+(H-T-B)*i/5;s+=`<line class="gridline" x1="0" y1="${y}" x2="1000" y2="${y}"/>`;s+=`<text x="8" y="${y-4}" fill="#71839e" font-size="11">${(hi-(hi-lo)*i/5).toFixed(1)}</text>`}
+let by=Y(base);s+=`<line class="baseline" x1="0" y1="${by}" x2="1000" y2="${by}"/><text x="990" y="${by-7}" text-anchor="end" fill="#f2c94c" font-size="11">BASELINE ${base.toFixed(1)} Hz</text>`;
+s+=`<polyline class="wave" points="${v.map((z,i)=>X(i)+","+Y(z)).join(" ")}"/>`;s+=`<circle cx="${X(v.length-1)}" cy="${Y(cur)}" r="5" fill="#48aaff"/>`;
+$("svg").innerHTML=s;attachHover("svg","freqPlot","freqTip",rows,"Hz",base,"Hz");renderDb();$("history").innerHTML=rows.slice(-10).reverse().map(r=>`<tr><td>${r.Timestamp}</td><td>${r.Device_ID}</td><td>Gear ${r.Gear}</td><td>${Number(r.Hz).toFixed(2)}</td><td>${Number(r.dB).toFixed(1)}</td></tr>`).join("");
+}
+$("loadBtn").addEventListener("click",()=>{localStorage.setItem("frequencyMonitorSheetUrlV2",$("sheetUrl").value.trim());scanGoogleSheet(false)});
+$("sheetUrl").addEventListener("keydown",e=>{if(e.key==="Enter")$("loadBtn").click()});
+gears();render();
+</script></body></html>
